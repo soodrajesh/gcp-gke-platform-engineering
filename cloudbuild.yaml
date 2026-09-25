@@ -42,14 +42,14 @@ steps:
         if [ "${_BLOCK_ON_CRITICAL}" = "true" ] && [ "$$CRIT" -gt 0 ]; then echo "blocked by policy"; exit 1; fi
 
   - id: attest
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:latest   # full image: bundles the beta track
     entrypoint: bash
     args:
       - -c
       - |
         set -eu
         DIGEST=$(gcloud artifacts docker images describe "${_REPO}/shop:${_TAG}" --format='get(image_summary.digest)')
-        gcloud container binauthz attestations sign-and-create \
+        gcloud beta container binauthz attestations sign-and-create \
           --artifact-url="${_REPO}/shop@$$DIGEST" \
           --attestor="${_ATTESTOR}" --attestor-project="${PROJECT_ID}" \
           --keyversion-project="${PROJECT_ID}" --keyversion-location="${_KMS_LOCATION}" \

@@ -18,6 +18,10 @@ GKE's admission controller injects `spec.matchConstraints.namespaceSelector` int
 ### L4 · Cloud Build scan step: `requires the installation of components: [local-extract]`
 The `cloud-sdk:slim` builder image has no scanner component and its component manager is disabled. **Fix:** `apt-get install google-cloud-cli-local-extract` at the start of the step; if scanning is still unavailable the step warns loudly and continues unless `_BLOCK_ON_CRITICAL=true`.
 
+<a id="l5"></a>
+### L5 · `Invalid choice: 'sign-and-create'`
+`gcloud container binauthz attestations sign-and-create` lives in the **beta** track, which the `cloud-sdk:slim` image doesn't include. **Fix:** run the attest step on `cloud-sdk:latest` with `gcloud beta ...`. (The scan step, on slim + apt, works and reports findings by severity.)
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.
