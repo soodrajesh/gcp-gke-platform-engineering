@@ -22,6 +22,14 @@ The `cloud-sdk:slim` builder image has no scanner component and its component ma
 ### L5 · `Invalid choice: 'sign-and-create'`
 `gcloud container binauthz attestations sign-and-create` lives in the **beta** track, which the `cloud-sdk:slim` image doesn't include. **Fix:** run the attest step on `cloud-sdk:latest` with `gcloud beta ...`. (The scan step, on slim + apt, works and reports findings by severity.)
 
+<a id="l6"></a>
+### L6 · App metrics never appear in Cloud Monitoring (PromQL)
+The NetworkPolicy allowed scrape traffic from a namespace named `gmp-system`; on GKE the Managed Prometheus collectors run in **`gke-gmp-system`**. The default-deny policy correctly blocked the scrape. **Fix:** allow `kubernetes.io/metadata.name: gke-gmp-system`. Diagnose: `kubectl get ns | grep gmp` and `kubectl -n <ns> get podmonitoring <name> -o yaml` (status).
+
+<a id="l7"></a>
+### L7 · Prod endpoint returns `500 fault filter abort` right after the rollout succeeds
+GKE routes a Gateway rule whose Service has no ready endpoints to a built-in `serve500` backend. During the rollout prod briefly had none, and the corrected URL map takes ~2–3 minutes to reach Google's edge even though `kubectl` and `gcloud compute url-maps describe` already look right. Backends `HEALTHY` + app reachable via `kubectl port-forward` + correct URL map = wait and re-probe; do not "fix" anything.
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.

@@ -21,7 +21,7 @@ spec:
     - from:                                  # same-namespace traffic only
         - podSelector: {}
     - from:                                  # Managed Prometheus scrapes /metrics
-        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gmp-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gke-gmp-system}}
     - from:                                  # Google Front Ends / health checkers -> pods (container-native LB)
         - ipBlock: {cidr: 130.211.0.0/22}
         - ipBlock: {cidr: 35.191.0.0/16}
@@ -58,7 +58,7 @@ spec:
     - from:                                  # same-namespace traffic only
         - podSelector: {}
     - from:                                  # Managed Prometheus scrapes /metrics
-        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gmp-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gke-gmp-system}}
     - from:                                  # Google Front Ends / health checkers -> pods (container-native LB)
         - ipBlock: {cidr: 130.211.0.0/22}
         - ipBlock: {cidr: 35.191.0.0/16}
@@ -95,7 +95,7 @@ spec:
     - from:                                  # same-namespace traffic only
         - podSelector: {}
     - from:                                  # Managed Prometheus scrapes /metrics
-        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gmp-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gke-gmp-system}}
   egress:
     - to:                                    # same-namespace traffic
         - podSelector: {}
@@ -133,7 +133,7 @@ spec:
     - from:                                  # same-namespace traffic only
         - podSelector: {}
     - from:                                  # Managed Prometheus scrapes /metrics
-        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gmp-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: gke-gmp-system}}
   egress:
     - to:                                    # same-namespace traffic
         - podSelector: {}
