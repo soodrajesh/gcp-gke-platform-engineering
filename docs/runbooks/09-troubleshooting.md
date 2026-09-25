@@ -10,6 +10,10 @@ Entries marked **found in development** were real bugs caught while building thi
 ### L2 · `The following PromQL metric(s) are invalid: http_requests_total`
 Cloud Monitoring validates PromQL alert queries against metrics that already exist; a metric that has never been written is "invalid", so the alert can't be created in the first apply. **Fix:** `enable_app_alerts` (default false); `up.sh` waits until Managed Prometheus has scraped the app, then applies with `enable_app_alerts=true`.
 
+<a id="l3"></a>
+### L3 · Argo app `platform-policies` stuck `OutOfSync` after a successful sync
+GKE's admission controller injects `spec.matchConstraints.namespaceSelector` into every `ValidatingAdmissionPolicy` (exempting its managed namespaces `kube-system`, `gke-gmp-system`, …). Argo CD sees the live object differ from git forever. **Fix:** `ignoreDifferences` on that one field + `RespectIgnoreDifferences=true`. Diagnose with `kubectl -n argocd get application <app> -o json | jq '.status.resources[] | select(.status!="Synced")'`.
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.

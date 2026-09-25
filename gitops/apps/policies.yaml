@@ -14,5 +14,13 @@ spec:
   destination: {server: https://kubernetes.default.svc, namespace: argocd}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
-    syncOptions: [ServerSideApply=true]
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
     retry: {limit: 5, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
+  # GKE's admission controller injects matchConstraints.namespaceSelector into every
+  # ValidatingAdmissionPolicy to exempt its own managed namespaces. That is a platform protection
+  # we want to keep, so tell Argo CD not to treat it as drift (found on the first live deployment).
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicy
+      jsonPointers:
+        - /spec/matchConstraints/namespaceSelector
