@@ -3,7 +3,7 @@
 An **internal developer platform** on GKE Autopilot: secure-by-default multi-tenancy, a signed-image-only supply chain, GitOps for the platform layer, progressive delivery with automatic canary and one-command rollback, a WAF-protected Gateway, and golden-signal observability — all provisioned and destroyed by **one script each**.
 
 > **Status: built and statically verified; first live deployment pending.**
-> Verified so far: `terraform plan` = 97 resources against the target project (0 destroy); all Kubernetes manifests schema-valid; the admission policies pass 9/9 deny/allow cases **on a real Kubernetes API server** and the suite provably fails when a policy is removed; app unit tests pass. The live proof (`scripts/test.sh`, ~45 checks across 9 areas) runs at the end of `./scripts/up.sh` and writes [`docs/test-results.md`](docs/test-results.md). Runbook outputs are marked *Captured* vs *Expected* accordingly.
+> Verified so far: `terraform plan` = 97 resources against the target project (0 destroy); all Kubernetes manifests schema-valid; the admission policies pass 9/9 deny/allow cases **on a real Kubernetes API server** and the suite provably fails when a policy is removed; app unit tests pass. The live proof (`scripts/test.sh`, 26 checks across 9 areas) runs at the end of `./scripts/up.sh` and writes [`docs/test-results.md`](docs/test-results.md). Runbook outputs are marked *Captured* vs *Expected* accordingly.
 
 ```bash
 gcloud config set project <your-project>      # billing linked; the rest is auto-detected
