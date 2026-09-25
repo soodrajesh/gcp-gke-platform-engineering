@@ -82,12 +82,20 @@ pod_yaml server team-b reader | sed 's|app: probe|app: echo|; s|command:.*|comma
 check "server pod ready (team-b)"          kubectl -n team-b wait --for=condition=Ready pod/server --timeout=240s
 check "client pod ready (team-a)"          run_pod client-a team-a reader
 check "client pod ready (team-b)"          run_pod client-b team-b reader
-GET='import urllib.request,sys
+SVC_IP="$(kubectl -n team-b get svc echo -o jsonpath='{.spec.clusterIP}')"; export SVC_IP
+export GET_IP="import urllib.request,sys
+try:
+    r=urllib.request.urlopen('http://$SVC_IP/healthz',timeout=6); print('HTTP',r.status)
+except Exception as e: print('ERR',type(e).__name__,e); sys.exit(3)"
+GET_NAME='import urllib.request,sys
 try:
     r=urllib.request.urlopen("http://echo.team-b.svc.cluster.local/healthz",timeout=6); print("HTTP",r.status)
-except Exception as e: print("BLOCKED",type(e).__name__); sys.exit(3)'
-check "team-a -> team-b service is BLOCKED (cross-tenant)" bash -c "! kubectl -n team-a exec client-a -- python -c '$GET'"
-check "team-b -> team-b service is ALLOWED (same namespace)" kubectl -n team-b exec client-b -- python -c "$GET"
+except Exception as e: print("ERR",type(e).__name__,e); sys.exit(3)'
+check "DNS works from a locked-down tenant pod (NodeLocal DNSCache allowed)" kubectl -n team-a exec client-a -- python -c "import socket; print(socket.gethostbyname('echo.team-b.svc.cluster.local'))"
+# Prove isolation by IP so DNS cannot be the reason: the connection must TIME OUT (dropped by policy),
+# not be refused/unresolvable, and the same request from inside team-b must succeed.
+check "team-a -> team-b service IP is DROPPED by NetworkPolicy (timeout)" bash -c "kubectl -n team-a exec client-a -- python -c \"\$GET_IP\" 2>&1 | grep -qi 'timed out'"
+check "team-b -> team-b service is ALLOWED (same namespace, by name)"      kubectl -n team-b exec client-b -- python -c "$GET_NAME"
 
 section "5. Workload Identity: keyless access, per-tenant IAM"
 TOK='import urllib.request,json

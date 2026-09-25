@@ -30,6 +30,7 @@ spec:
         - podSelector: {}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+        - ipBlock: {cidr: 169.254.20.10/32}   # NodeLocal DNSCache: the resolver GKE puts in every pod
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
@@ -67,6 +68,7 @@ spec:
         - podSelector: {}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+        - ipBlock: {cidr: 169.254.20.10/32}   # NodeLocal DNSCache: the resolver GKE puts in every pod
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
@@ -101,6 +103,7 @@ spec:
         - podSelector: {}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+        - ipBlock: {cidr: 169.254.20.10/32}   # NodeLocal DNSCache: the resolver GKE puts in every pod
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
@@ -139,6 +142,7 @@ spec:
         - podSelector: {}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+        - ipBlock: {cidr: 169.254.20.10/32}   # NodeLocal DNSCache: the resolver GKE puts in every pod
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}

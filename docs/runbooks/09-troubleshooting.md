@@ -30,6 +30,12 @@ The NetworkPolicy allowed scrape traffic from a namespace named `gmp-system`; on
 ### L7 · Prod endpoint returns `500 fault filter abort` right after the rollout succeeds
 GKE routes a Gateway rule whose Service has no ready endpoints to a built-in `serve500` backend. During the rollout prod briefly had none, and the corrected URL map takes ~2–3 minutes to reach Google's edge even though `kubectl` and `gcloud compute url-maps describe` already look right. Backends `HEALTHY` + app reachable via `kubectl port-forward` + correct URL map = wait and re-probe; do not "fix" anything.
 
+<a id="l8"></a>
+### L8 · Everything "network" fails in a locked-down namespace: `Temporary failure in name resolution`
+GKE puts **NodeLocal DNSCache (`169.254.20.10`)** in every pod's `resolv.conf`. A default-deny egress policy that only allows DNS to `kube-dns` pods blocks it, so DNS, the metadata server (Workload Identity) and every Service-by-name call fail, while pod-IP and ClusterIP traffic still works (which is how to tell). **Fix:** allow egress to `169.254.20.10/32` on 53/udp+tcp. Diagnose: `kubectl exec <pod> -- cat /etc/resolv.conf` and compare `gethostbyname` vs a direct IP request.
+
+**Lesson (test design):** the first version of the cross-tenant check passed for the wrong reason — DNS was failing for *everyone*, so "blocked" was trivially true. It now proves isolation on the **IP path** and requires a *timeout* (a policy drop), with DNS covered by its own check.
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.
