@@ -15,17 +15,6 @@ module "network" {
   depends_on = [google_project_service.apis]
 }
 
-# --- FinOps: per-namespace/label cost attribution lands here ------------------------------------
-resource "google_bigquery_dataset" "usage" {
-  project                    = var.project_id
-  dataset_id                 = "gke_usage"
-  location                   = var.region
-  description                = "GKE resource-consumption metering export (cost allocation by namespace/label)"
-  delete_contents_on_destroy = true
-  labels                     = local.labels
-  depends_on                 = [google_project_service.apis]
-}
-
 # --- Cluster ----------------------------------------------------------------------------------------
 module "gke" {
   source               = "./modules/gke"
@@ -36,7 +25,6 @@ module "gke" {
   subnetwork           = module.network.subnetwork
   authorized_cidr      = var.authorized_cidr
   node_service_account = local.sa["gke-nodes"]
-  usage_dataset_id     = google_bigquery_dataset.usage.dataset_id
   labels               = local.labels
 
   # The policy must exist before the first pod is admitted, so system workloads never race it.
@@ -197,6 +185,7 @@ module "observability" {
   cluster_name = var.cluster_name
   alert_email  = var.alert_email
   lb_ip        = module.edge.ip_address
+  app_alerts   = var.enable_app_alerts
   depends_on   = [google_project_service.apis]
 }
 

@@ -14,4 +14,3 @@ output "wif_provider" { value = module.github_wif.provider }
 output "ci_plan_sa" { value = local.sa["plat-ci-plan"] }
 output "ci_deploy_sa" { value = local.sa["plat-ci-deploy"] }
 output "dashboard_id" { value = module.observability.dashboard_id }
-output "usage_dataset" { value = google_bigquery_dataset.usage.dataset_id }

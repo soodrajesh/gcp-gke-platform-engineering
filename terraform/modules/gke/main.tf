@@ -5,7 +5,6 @@ variable "network" { type = string }
 variable "subnetwork" { type = string }
 variable "authorized_cidr" { type = string }
 variable "node_service_account" { type = string }
-variable "usage_dataset_id" { type = string }
 variable "labels" {
   type    = map(string)
   default = {}
@@ -68,13 +67,10 @@ resource "google_container_cluster" "this" {
     enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
   }
 
+  # Cost allocation: spend by namespace and label in Cloud Billing reports / billing export.
+  # (GKE usage metering export to BigQuery is not supported on Autopilot.)
   cost_management_config { enabled = true }
 
-  resource_usage_export_config {
-    enable_network_egress_metering       = false
-    enable_resource_consumption_metering = true
-    bigquery_destination { dataset_id = var.usage_dataset_id }
-  }
 
   cluster_autoscaling {
     auto_provisioning_defaults {

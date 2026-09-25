@@ -2,6 +2,10 @@ variable "project_id" { type = string }
 variable "cluster_name" { type = string }
 variable "alert_email" { type = string }
 variable "lb_ip" { type = string }
+variable "app_alerts" {
+  type    = bool
+  default = false
+}
 
 resource "google_monitoring_notification_channel" "email" {
   project      = var.project_id
@@ -53,6 +57,7 @@ resource "google_monitoring_alert_policy" "uptime" {
 
 # --- App SLO signal from Managed Prometheus (PromQL evaluated by Cloud Monitoring) ----------
 resource "google_monitoring_alert_policy" "error_ratio" {
+  count        = var.app_alerts ? 1 : 0
   project      = var.project_id
   display_name = "shop-prod - 5xx ratio above 5% for 5m (canary guard)"
   combiner     = "OR"

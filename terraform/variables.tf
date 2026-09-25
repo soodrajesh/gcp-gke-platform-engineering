@@ -47,6 +47,12 @@ variable "resource_suffix" {
   default     = ""
 }
 
+variable "enable_app_alerts" {
+  description = "Create alerts that reference application metrics. Cloud Monitoring rejects PromQL for a metric that has never been written, so up.sh turns this on after the app has been scraped."
+  type        = bool
+  default     = false
+}
+
 variable "admission_allowlist" {
   description = "Image patterns exempt from the signed-image requirement (platform add-ons pulled from upstream registries)."
   type        = list(string)

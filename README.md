@@ -23,7 +23,7 @@ gcloud config set project <your-project>      # billing linked; the rest is auto
 | **Edge protection** | Global external ALB via **Gateway API** + **Cloud Armor** (OWASP SQLi/XSS, rate limit) | live test §6 |
 | **GitOps for the platform** | **Argo CD** app-of-apps, self-heal + prune, scoped `AppProject` | drift heal in runbook 03 |
 | **Observability** | Managed Prometheus → Cloud Monitoring PromQL alerts, dashboard, uptime check, SLO signal | live test §8 |
-| **FinOps** | GKE usage metering → BigQuery; `team` label enforced; budget alerts; quotas | runbook 08 |
+| **FinOps** | GKE cost allocation (spend by namespace/label); `team` label enforced by policy; budget alerts; quotas | runbook 08 |
 | **Keyless CI/CD** | GitHub OIDC → WIF; separate read-only plan vs gated deploy identities | ADR / CI |
 
 ## Architecture

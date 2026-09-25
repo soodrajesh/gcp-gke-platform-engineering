@@ -96,6 +96,12 @@ log "8/9 Public endpoint"
 wait_for "http://$GW_IP/healthz answers 200" 600 bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' http://$GW_IP/healthz)\" = 200 ]"
 curl -s "http://$GW_IP/version"; echo
 
+log "8b/9 App alerts (need the metric to exist: wait for Managed Prometheus to scrape the app)"
+for _ in $(seq 1 30); do curl -s "http://$GW_IP/api/products" >/dev/null; sleep 2; done
+wait_for "http_requests_total visible in Cloud Monitoring PromQL" 600 bash -c \
+  "curl -s -G -H \"Authorization: Bearer \$(gcloud auth print-access-token)\" -H 'x-goog-user-project: $PROJECT_ID' 'https://monitoring.googleapis.com/v1/projects/$PROJECT_ID/location/global/prometheus/api/v1/query' --data-urlencode 'query=http_requests_total{namespace=\"shop-prod\"}' | grep -q '\"value\"'"
+$TF apply -input=false -auto-approve -var enable_app_alerts=true >/dev/null && ok "5xx-ratio alert created"
+
 if [ "$SKIP_TESTS" = 0 ]; then
   log "9/9 Live test suite"
   RUN_LOAD=1 "$ROOT/scripts/test.sh"

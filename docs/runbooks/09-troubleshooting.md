@@ -2,6 +2,14 @@
 
 Entries marked **found in development** were real bugs caught while building this repo (by plan review, a local Kubernetes API server, or script review) *before* the first live run.
 
+## Found on the first live deployment
+<a id="l1"></a>
+### L1 · `Resource usage export is not supported for Autopilot clusters`
+`resource_usage_export_config` (GKE usage metering → BigQuery) is rejected on Autopilot. **Fix:** removed; cost attribution uses `cost_management_config` + enforced `team` labels, visible in Cloud Billing reports.
+
+### L2 · `The following PromQL metric(s) are invalid: http_requests_total`
+Cloud Monitoring validates PromQL alert queries against metrics that already exist; a metric that has never been written is "invalid", so the alert can't be created in the first apply. **Fix:** `enable_app_alerts` (default false); `up.sh` waits until Managed Prometheus has scraped the app, then applies with `enable_app_alerts=true`.
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.
