@@ -43,8 +43,11 @@ kubectl config delete-cluster "gke_${PROJECT_ID}_${REGION}_${CLUSTER}" >/dev/nul
 rm -f "$SUFFIX_FILE" "$ROOT/.last-image"
 
 if [ "$PURGE" = 1 ]; then
-  log "4/4 Purging state bucket"
-  gcloud storage rm -r "gs://$STATE_BUCKET" --quiet >/dev/null 2>&1 || true; ok "state bucket removed"
+  log "4/4 Purging this repo's Terraform state"
+  gcloud storage rm -r "gs://$STATE_BUCKET/gke-platform/" --quiet >/dev/null 2>&1 || true
+  if [ -z "$(gcloud storage ls "gs://$STATE_BUCKET/" 2>/dev/null)" ]; then
+    gcloud storage rm -r "gs://$STATE_BUCKET" --quiet >/dev/null 2>&1 || true; ok "state prefix and (now empty) bucket removed"
+  else ok "state prefix removed; bucket kept because other stacks still use it"; fi
 else log "4/4 Kept state bucket gs://$STATE_BUCKET (a few KB; --purge removes it)"; fi
 
 log "Anything billable left?"
