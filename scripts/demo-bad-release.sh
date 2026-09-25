@@ -8,14 +8,27 @@ GW_IP="$($TF output -raw gateway_ip)"; REPO="$($TF output -raw artifact_repo)"; 
 KEYVER="$($TF output -raw signing_key_version)"; ATTESTOR="$($TF output -raw attestor)"
 KEYRING="$(sed -E 's|.*/keyRings/([^/]+)/.*|\1|' <<<"$KEYVER")"; KEY="$(sed -E 's|.*/cryptoKeys/([^/]+)/.*|\1|' <<<"$KEYVER")"; KVER="$(sed -E 's|.*/cryptoKeyVersions/([0-9]+)$|\1|' <<<"$KEYVER")"
 
-err_rate() { # <requests>  -> percentage of /api/products calls that returned 5xx
+# Cloud Armor throttles at 120 req/min/IP, so keep well under it: 60 requests ~ 33 s per endpoint.
+sample_status() { # <n> -> "<pct of requests that returned 5xx>"
   local n="$1" bad=0 i c
-  for i in $(seq 1 "$n"); do c=$(curl -s -o /dev/null -w '%{http_code}' "http://$GW_IP/api/products"); [ "${c:0:1}" = 5 ] && bad=$((bad+1)); sleep 0.6; done
+  for i in $(seq 1 "$n"); do c=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "http://$GW_IP/api/products"); [ "${c:0:1}" = 5 ] && bad=$((bad+1)); sleep 0.55; done
   echo $(( bad * 100 / n ))
+}
+sample_build() { # <n> -> "<pct of responses served by the faulty build>"
+  local n="$1" bad=0 i v
+  for i in $(seq 1 "$n"); do v=$(curl -s -m 5 "http://$GW_IP/version"); [[ "$v" == *'"error_rate":0.5'* ]] && bad=$((bad+1)); sleep 0.55; done
+  echo $(( bad * 100 / n ))
+}
+canary_pods() { kubectl -n shop-prod get pods -l app=shop-canary --no-headers 2>/dev/null | grep -c Running || true; }
+stable_pods() { kubectl -n shop-prod get pods -l app=shop --no-headers 2>/dev/null | grep -c Running || true; }
+measure_phase() { # <label>
+  local c s; c="$(canary_pods)"; s="$(stable_pods)"
+  echo "  $1: canary pods $c / stable $s  (pod share $(( 100 * c / (c + s) ))%)"
+  echo "      responses from the faulty build: $(sample_build 60)%   ·   API calls that returned 5xx: $(sample_status 60)%"
 }
 
 log "Baseline: error rate on prod before the bad release"
-echo "  5xx: $(err_rate 30)%"
+echo "  API calls that returned 5xx: $(sample_status 40)%"
 
 log "Build a faulty release (ERROR_RATE=0.5), signed like any other"
 TAG="bad-$(date +%y%m%d-%H%M%S)"
@@ -33,13 +46,33 @@ gcloud deploy releases promote --release "$REL" --delivery-pipeline shop --regio
 until [ "$(state "$REL-to-prod-0001")" = PENDING_APPROVAL ]; do sleep 5; done
 gcloud deploy rollouts approve "$REL-to-prod-0001" --release "$REL" --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet >/dev/null
 
-log "Canary is live at 25%: measuring what users see"
-sleep 45
-RATE="$(err_rate 40)"; echo "  5xx during canary: ${RATE}%  (expected ≈ 25% × 50% ≈ 12%, not 50%)"
-if [ "$RATE" -ge 5 ]; then
-  log "Above the 5% guard -> rolling prod back to the previous good release"
-  gcloud deploy rollouts cancel "$REL-to-prod-0001" --release "$REL" --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
-  gcloud deploy targets rollback prod --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet >/dev/null
-  sleep 60
-  log "After rollback"; echo "  5xx: $(err_rate 30)%"; curl -s "http://$GW_IP/version"; echo
-else warn "error rate below the guard; nothing to roll back"; fi
+log "Canary phases: waiting for canary pods, then measuring what users actually see"
+for _ in $(seq 1 60); do [ "$(canary_pods)" -ge 1 ] && break; sleep 5; done
+sleep 20
+measure_phase "phase 1"
+PODS1="$(canary_pods)"
+# the automation advances to the next phase after a 90 s soak; wait for the pod mix to change
+for _ in $(seq 1 60); do [ "$(canary_pods)" != "$PODS1" ] && break; sleep 5; done
+sleep 20
+measure_phase "phase 2"
+
+log "Faulty build is hurting users -> cancel the canary and roll prod back"
+gcloud deploy rollouts cancel "$REL-to-prod-0001" --release "$REL" --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+gcloud deploy targets rollback prod --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet 2>&1 | tail -1
+# Production requires a human approval for EVERY rollout, rollbacks included: approve it.
+RB=""; RBREL=""
+for _ in $(seq 1 30); do
+  for r in $(gcloud deploy releases list --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --format='value(name.basename())'); do
+    n=$(gcloud deploy rollouts list --delivery-pipeline shop --release "$r" --region "$REGION" --project "$PROJECT_ID" --format='value(name.basename(),state)' 2>/dev/null | awk '$2=="PENDING_APPROVAL"{print $1}' | head -1)
+    [ -n "$n" ] && { RB="$n"; RBREL="$r"; break 2; }
+  done; sleep 5
+done
+[ -n "$RB" ] || die "rollback rollout never reached PENDING_APPROVAL"
+gcloud deploy rollouts approve "$RB" --release "$RBREL" --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --quiet >/dev/null
+ok "approved rollback $RB"
+for _ in $(seq 1 90); do [ "$(gcloud deploy rollouts describe "$RB" --release "$RBREL" --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --format='value(state)')" = SUCCEEDED ] && break; sleep 10; done
+ok "rollback SUCCEEDED"
+
+log "After rollback"
+echo "  responses from the faulty build: $(sample_build 40)%   ·   API calls that returned 5xx: $(sample_status 40)%"
+curl -s "http://$GW_IP/version"; echo

@@ -58,13 +58,15 @@ import json,sys; d=json.loads(sys.argv[1]); c=[x['cidrBlock'] for x in d['master
 sys.exit(1 if '0.0.0.0/0' in c else 0)" "$CJ"
 
 section "2. Supply chain: only pipeline-signed images run (Binary Authorization)"
-unsigned() {
-  pod_yaml unsigned team-a reader | sed "s|image: $IMG|image: docker.io/library/nginx:1.27.3|; /command:/d" | kubectl apply -f - >/tmp/unsigned.out 2>&1
-  cat /tmp/unsigned.out; grep -qiE "binary authorization|denied by" /tmp/unsigned.out
-}
-check "unsigned image (nginx from Docker Hub) is DENIED"  unsigned
-check "signed image (our build) is ADMITTED"               run_pod signed team-a reader
-kubectl -n team-a delete pod unsigned signed --ignore-not-found --wait=false >/dev/null 2>&1
+# nginx:1.27.3 pinned by digest, so the denial can only be about the attestation, not the tag form
+UNSIGNED_DIGEST="sha256:bc2f6a7c8ddbccf55bdb19659ce3b0a92ca6559e86d42677a5a02ef6bda2fcef"
+apply_image() { pod_yaml "$1" team-a reader | sed "s|image: $IMG|image: $2|; /command:/d" | kubectl apply -f - 2>&1; }
+unsigned_by_digest() { local o; o="$(apply_image unsigned docker.io/library/nginx@$UNSIGNED_DIGEST)"; echo "$o"; grep -q "No attestations found that were valid and signed by a key trusted by the attestor" <<<"$o"; }
+unsigned_by_tag()    { local o; o="$(apply_image unsigned-tag docker.io/library/nginx:1.27.3)"; echo "$o"; grep -qi "binary authorization" <<<"$o"; }
+check "unsigned image pinned by digest is DENIED: 'No attestations found...'" unsigned_by_digest
+check "tag-referenced image is DENIED (Binary Authorization requires digests)"  unsigned_by_tag
+check "signed image (our build) is ADMITTED"                                     run_pod signed team-a reader
+kubectl -n team-a delete pod unsigned unsigned-tag signed --ignore-not-found --wait=false >/dev/null 2>&1
 
 section "3. Admission policy-as-code (ValidatingAdmissionPolicy)"
 check "policy suite: 9 cases (deny/allow)"  "$ROOT/tests/admission-policies.sh" "$CTX" team-a
@@ -122,8 +124,13 @@ check "staging path routed via same Gateway"       test "$(code "http://$GW_IP/s
 
 section "7. Progressive delivery (Cloud Deploy)"
 check "pipeline exists"                            gcloud deploy delivery-pipelines describe shop --region "$REGION" --project "$PROJECT_ID"
-LATEST_REL="$(gcloud deploy releases list --delivery-pipeline shop --region "$REGION" --project "$PROJECT_ID" --limit 1 --sort-by=~createTime --format='value(name.basename())')"
-check "latest release's prod rollout SUCCEEDED"    bash -c "gcloud deploy rollouts list --delivery-pipeline shop --release $LATEST_REL --region $REGION --project $PROJECT_ID --format='value(name.basename(),state)' | grep -- '-to-prod-' | grep -q SUCCEEDED"
+# The newest prod rollout that was not cancelled (a cancelled canary, e.g. from the bad-release drill, is not "current").
+current_prod_rollout_ok() {
+  gcloud deploy rollouts list --delivery-pipeline shop --release=- --region "$REGION" --project "$PROJECT_ID" \
+    --sort-by=~createTime --format='value(name.basename(),state)' 2>/dev/null \
+    | grep -- '-to-prod-' | grep -v CANCELLED | head -1 | tee /tmp/prod-rollout.out | grep -q SUCCEEDED
+}
+check "current prod rollout (newest non-cancelled) SUCCEEDED"  current_prod_rollout_ok
 check "prod serves the released version"           bash -c "curl -s http://$GW_IP/version | grep -q '\"version\":\"v'"
 
 section "8. Observability: Managed Prometheus -> Cloud Monitoring (PromQL)"

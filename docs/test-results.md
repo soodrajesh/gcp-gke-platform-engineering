@@ -1,8 +1,8 @@
 # Live test results
 
-Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T22:41Z
+Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T23:24Z
 
-**27 passed, 0 failed**
+**28 passed, 0 failed**
 
 | | Check |
 |---|---|
@@ -13,7 +13,8 @@ Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T
 | ✅ | Gateway API enabled |
 | ✅ | Managed Prometheus on |
 | ✅ | Control plane not open to the world |
-| ✅ | unsigned image (nginx from Docker Hub) is DENIED |
+| ✅ | unsigned image pinned by digest is DENIED: 'No attestations found...' |
+| ✅ | tag-referenced image is DENIED (Binary Authorization requires digests) |
 | ✅ | signed image (our build) is ADMITTED |
 | ✅ | policy suite: 9 cases (deny/allow) |
 | ✅ | server pod ready (team-b) |
@@ -29,7 +30,7 @@ Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T
 | ✅ | XSS -> 403 |
 | ✅ | staging path routed via same Gateway |
 | ✅ | pipeline exists |
-| ✅ | latest release's prod rollout SUCCEEDED |
+| ✅ | current prod rollout (newest non-cancelled) SUCCEEDED |
 | ✅ | prod serves the released version |
 | ✅ | app RED metrics queryable via PromQL |
-| ✅ | HPA scaled out (2 -> 8 replicas) |
+| ✅ | HPA scaled out (4 -> 9 replicas) |

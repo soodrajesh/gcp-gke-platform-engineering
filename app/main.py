@@ -114,7 +114,7 @@ def index() -> str:
     return (
         "<!doctype html><meta charset=utf-8><title>shop</title>"
         "<body style='font:16px system-ui;max-width:640px;margin:48px auto;padding:0 16px'>"
-        f"<h1>shop <small style='color:#666'>v{version_string()}</small></h1><ul>{rows}</ul>"
+        f"<h1>shop <small style='color:#666'>{version_string()}</small></h1><ul>{rows}</ul>"
         "<p style='color:#666'>Served from GKE Autopilot behind a Cloud Armor Gateway.</p>"
         "</body>"
     )

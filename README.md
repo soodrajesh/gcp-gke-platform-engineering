@@ -2,8 +2,7 @@
 
 An **internal developer platform** on GKE Autopilot: secure-by-default multi-tenancy, a signed-image-only supply chain, GitOps for the platform layer, progressive delivery with automatic canary and one-command rollback, a WAF-protected Gateway, and golden-signal observability — all provisioned and destroyed by **one script each**.
 
-> **Status: built and statically verified; first live deployment pending.**
-> Verified so far: `terraform plan` = 97 resources against the target project (0 destroy); all Kubernetes manifests schema-valid; the admission policies pass 9/9 deny/allow cases **on a real Kubernetes API server** and the suite provably fails when a policy is removed; app unit tests pass. The live proof (`scripts/test.sh`, 26 checks across 9 areas) runs at the end of `./scripts/up.sh` and writes [`docs/test-results.md`](docs/test-results.md). Runbook outputs are marked *Captured* vs *Expected* accordingly.
+> **Status: deployed and verified live** on GKE Autopilot (europe-west1), 2026-09-25/26. `./scripts/up.sh` built it end to end and the live suite [`scripts/test.sh`](scripts/test.sh) passes **28 of 28** (results: [`docs/test-results.md`](docs/test-results.md)). The bad-release canary drill and rollback ran for real ([runbook 05](docs/runbooks/05-release-and-rollback.md)). Getting there took **seven fixes** that only a live deployment could find — each is documented in the [troubleshooting runbook](docs/runbooks/09-troubleshooting.md) (Autopilot limits, GKE-injected fields, NodeLocal DNS vs default-deny, a Prometheus namespace, build-tool tracks, …). Evidence below was captured from that live deployment.
 
 ```bash
 gcloud config set project <your-project>      # billing linked; the rest is auto-detected
@@ -11,18 +10,37 @@ gcloud config set project <your-project>      # billing linked; the rest is auto
 ./scripts/down.sh     # delete everything (--purge also drops the state bucket)
 ```
 
+## Evidence (captured from the live deployment)
+
+| | |
+|---|---|
+| ![live test suite](docs/img/live-test-suite.png) | ![admission denials](docs/img/live-admission-denials.png) |
+| **`scripts/test.sh`** — every control proven on the running cluster | **Admission control** — Binary Authorization denies unsigned/tag-referenced images; policies deny `:latest` and public Services; the signed build is admitted |
+
+| | |
+|---|---|
+| ![Argo CD](docs/img/argocd-applications.png) | ![delivery](docs/img/live-delivery.png) |
+| **Argo CD** — all six platform apps Synced and Healthy | **Delivery** — Cloud Deploy releases and rollouts, the KMS-backed attestation, Argo apps |
+
+| | |
+|---|---|
+| ![WAF](docs/img/live-waf-edge.png) | ![canary drill](docs/img/live-canary-drill.png) |
+| **Edge** — Cloud Armor rules; SQLi/XSS → 403, normal → 200 | **Bad-release drill** — canary exposure tracks pod share; rollback restores 0 % errors |
+
+The Cloud Console views (GKE, Cloud Deploy, Monitoring) are not included: the console needs an interactive Google sign-in that automation cannot perform.
+
 ## Why this is a platform, not a cluster
 
 | Concern | Mechanism | Proven by |
 |---|---|---|
-| **Only trusted code runs** | Cloud Build builds, scans and signs each image *digest* with a KMS-held key; **Binary Authorization** admits only signed digests; tags immutable | live test §2 (unsigned Docker Hub image denied, our build admitted) |
+| **Only trusted code runs** | Cloud Build builds, scans and signs each image *digest* with a KMS-held key; **Binary Authorization** admits only signed digests; tags immutable | live test §2: unsigned image → `No attestations found…`; tag reference → denied; our build admitted |
 | **Org rules as code** | Native **ValidatingAdmissionPolicy** (CEL, in the API server): no `:latest`, team label required, no `LoadBalancer` Services | 9-case suite on a real API server, in CI |
 | **Multi-tenancy** | Namespace per team: Pod Security `restricted`, quota, default-deny NetworkPolicy, per-tenant identity | live tests §4–§5 |
 | **Keyless cloud access** | Workload Identity Federation for GKE: IAM granted straight to `ns/<ns>/sa/<sa>`; no service-account keys anywhere | team-a reads its bucket, team-b gets 403 |
-| **Safe releases** | **Cloud Deploy**: staging → manual approval → 25 % → 50 % → 100 % canary; alert-guarded; one-command rollback | `scripts/demo-bad-release.sh` |
+| **Safe releases** | **Cloud Deploy**: staging → manual approval → 25 % → 50 % → 100 % canary; one-command rollback (which, in prod, also needs approval) | live drill: 25 % pods → 25 % faulty responses; rollback → 0 % errors |
 | **Edge protection** | Global external ALB via **Gateway API** + **Cloud Armor** (OWASP SQLi/XSS, rate limit) | live test §6 |
 | **GitOps for the platform** | **Argo CD** app-of-apps, self-heal + prune, scoped `AppProject` | drift heal in runbook 03 |
-| **Observability** | Managed Prometheus → Cloud Monitoring PromQL alerts, dashboard, uptime check, SLO signal | live test §8 |
+| **Observability** | Managed Prometheus → Cloud Monitoring PromQL alerts, dashboard, uptime check | live test §8 (app metrics queryable via PromQL) |
 | **FinOps** | GKE cost allocation (spend by namespace/label); `team` label enforced by policy; budget alerts; quotas | runbook 08 |
 | **Keyless CI/CD** | GitHub OIDC → WIF; separate read-only plan vs gated deploy identities | ADR / CI |
 
