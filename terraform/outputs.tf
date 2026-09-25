@@ -1,0 +1,17 @@
+output "cluster_name" { value = module.gke.name }
+output "cluster_location" { value = var.region }
+output "gateway_ip" { value = module.edge.ip_address }
+output "gateway_ip_name" { value = module.edge.ip_name }
+output "waf_policy" { value = module.edge.waf_policy }
+output "artifact_repo" { value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.apps.repository_id}" }
+output "build_staging_bucket" { value = google_storage_bucket.build_staging.name }
+output "build_service_account" { value = local.sa["plat-build"] }
+output "attestor" { value = module.binauthz.attestor }
+output "signing_key_version" { value = module.binauthz.signing_key_version }
+output "delivery_pipeline" { value = module.delivery.pipeline }
+output "team_a_bucket" { value = google_storage_bucket.team_a.name }
+output "wif_provider" { value = module.github_wif.provider }
+output "ci_plan_sa" { value = local.sa["plat-ci-plan"] }
+output "ci_deploy_sa" { value = local.sa["plat-ci-deploy"] }
+output "dashboard_id" { value = module.observability.dashboard_id }
+output "usage_dataset" { value = google_bigquery_dataset.usage.dataset_id }

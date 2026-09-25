@@ -1,0 +1,28 @@
+# Attach the Cloud Armor WAF policy and an explicit health check to the Service's LB backend.
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: shop
+spec:
+  default:
+    securityPolicy: gke-platform-waf
+  targetRef:
+    group: ""
+    kind: Service
+    name: shop
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: shop
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        requestPath: /healthz
+        port: 8080
+  targetRef:
+    group: ""
+    kind: Service
+    name: shop

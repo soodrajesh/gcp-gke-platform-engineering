@@ -1,0 +1,20 @@
+# Cloud Deploy renders with this file. No build section: images are built and signed in
+# Cloud Build and injected by digest at release time (gcloud deploy releases create --images).
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: shop
+manifests:
+  kustomize:
+    paths: [k8s/overlays/staging]
+deploy:
+  kubectl: {}
+profiles:
+  - name: staging
+    manifests:
+      kustomize:
+        paths: [k8s/overlays/staging]
+  - name: prod
+    manifests:
+      kustomize:
+        paths: [k8s/overlays/prod]

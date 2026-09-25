@@ -1,0 +1,17 @@
+# HPA lives in staging only: it is where load tests run. In prod, Cloud Deploy's canary controls
+# replica counts directly and an HPA would fight it (see docs/adr/0005).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: shop}
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 60}
+  behavior:
+    scaleDown: {stabilizationWindowSeconds: 60}

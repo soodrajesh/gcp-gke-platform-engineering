@@ -1,0 +1,27 @@
+# Managed Service for Prometheus scrapes the app's RED metrics; queried with PromQL in Cloud Monitoring.
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: shop
+  namespace: shop-staging
+spec:
+  selector:
+    matchLabels: {app: shop}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: shop
+  namespace: shop-prod
+spec:
+  selector:
+    matchLabels: {app: shop}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

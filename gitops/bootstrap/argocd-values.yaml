@@ -1,0 +1,28 @@
+# Minimal, Autopilot-friendly Argo CD. UI is not exposed publicly: reach it with
+# `kubectl -n argocd port-forward svc/argocd-server 8080:80`.
+global:
+  domain: argocd.local
+configs:
+  params:
+    server.insecure: true
+  cm:
+    exec.enabled: "false"
+dex: {enabled: false}
+notifications: {enabled: false}
+applicationSet: {enabled: false}
+redis:
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 100m, memory: 128Mi}
+controller:
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+server:
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+repoServer:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 250m, memory: 256Mi}

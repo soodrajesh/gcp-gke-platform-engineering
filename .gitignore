@@ -1,0 +1,15 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+deploy.env
+.deploy-suffix
+.kube/
+*.pem
+*.key

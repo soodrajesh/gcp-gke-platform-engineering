@@ -1,0 +1,159 @@
+# Namespaces are the tenancy boundary: Pod Security 'restricted', admission policies, quota, and
+# default-deny networking all key off the labels below.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-staging
+  labels:
+    team: shop
+    environment: staging
+    policy.platform/enforce: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    cost-center: shop
+    gateway-access: "true"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: shop-staging
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 4Gi
+    pods: "20"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-defaults
+  namespace: shop-staging
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 250m, memory: 256Mi}
+      defaultRequest: {cpu: 100m, memory: 128Mi}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-prod
+  labels:
+    team: shop
+    environment: prod
+    policy.platform/enforce: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    cost-center: shop
+    gateway-access: "true"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: shop-prod
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 8Gi
+    pods: "30"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-defaults
+  namespace: shop-prod
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 250m, memory: 256Mi}
+      defaultRequest: {cpu: 100m, memory: 128Mi}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    team: team-a
+    environment: tenant
+    policy.platform/enforce: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    cost-center: team-a
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: team-a
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    pods: "10"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-defaults
+  namespace: team-a
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 250m, memory: 256Mi}
+      defaultRequest: {cpu: 100m, memory: 128Mi}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-b
+  labels:
+    team: team-b
+    environment: tenant
+    policy.platform/enforce: "true"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    cost-center: team-b
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: team-b
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    pods: "10"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-defaults
+  namespace: team-b
+spec:
+  limits:
+    - type: Container
+      default: {cpu: 250m, memory: 256Mi}
+      defaultRequest: {cpu: 100m, memory: 128Mi}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-gateway
+  labels:
+    environment: platform

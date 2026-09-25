@@ -1,0 +1,80 @@
+# ValidatingAdmissionPolicy: policy-as-code evaluated *inside* the API server (CEL). No third-party
+# controller, no webhook to keep highly available. Bound only to namespaces labelled
+# policy.platform/enforce=true. Deny + Audit: rejected at admission and recorded in audit logs.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - {apiGroups: [""], apiVersions: [v1], operations: [CREATE], resources: [pods]}
+  variables:
+    - name: allContainers
+      expression: "object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : [])"
+  validations:
+    - expression: "variables.allContainers.all(c, !c.image.endsWith(':latest') && (c.image.contains('@sha256:') || c.image.split('/')[size(c.image.split('/')) - 1].contains(':')))"
+      message: "images must be pinned by digest or an explicit non-'latest' tag"
+      reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: disallow-latest-tag
+spec:
+  policyName: disallow-latest-tag
+  validationActions: [Deny, Audit]
+  matchResources:
+    namespaceSelector:
+      matchLabels: {policy.platform/enforce: "true"}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: require-team-label
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - {apiGroups: [""], apiVersions: [v1], operations: [CREATE], resources: [pods]}
+  validations:
+    - expression: "has(object.metadata.labels) && 'team' in object.metadata.labels && size(object.metadata.labels['team']) > 0"
+      message: "every pod must carry a 'team' label (cost allocation and ownership)"
+      reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: require-team-label
+spec:
+  policyName: require-team-label
+  validationActions: [Deny, Audit]
+  matchResources:
+    namespaceSelector:
+      matchLabels: {policy.platform/enforce: "true"}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: deny-public-services
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - {apiGroups: [""], apiVersions: [v1], operations: [CREATE, UPDATE], resources: [services]}
+  validations:
+    - expression: "!has(object.spec.type) || !(object.spec.type in ['LoadBalancer', 'NodePort'])"
+      message: "tenants expose services through the shared Gateway (HTTPRoute), not LoadBalancer/NodePort"
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: deny-public-services
+spec:
+  policyName: deny-public-services
+  validationActions: [Deny, Audit]
+  matchResources:
+    namespaceSelector:
+      matchLabels: {policy.platform/enforce: "true"}

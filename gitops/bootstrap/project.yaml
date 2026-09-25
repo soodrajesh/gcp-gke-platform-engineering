@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Cluster platform layer (namespaces, policy, gateway, monitoring). App releases go through Cloud Deploy, not Argo CD.
+  sourceRepos:
+    - https://github.com/soodrajesh/gcp-gke-platform-engineering.git
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: "*"}
+  clusterResourceWhitelist:
+    - {group: "*", kind: "*"}

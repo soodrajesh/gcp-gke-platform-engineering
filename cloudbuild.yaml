@@ -1,0 +1,55 @@
+# Secure build pipeline: build -> push -> vulnerability scan -> sign (Binary Authorization attestation).
+# The attestation is what lets the image run on the cluster; nothing else is admitted.
+substitutions:
+  _REPO: ""             # europe-west1-docker.pkg.dev/<project>/apps
+  _TAG: dev
+  _ERROR_RATE: "0"      # >0 produces a deliberately faulty build for the canary demo
+  _ATTESTOR: built-by-pipeline
+  _KMS_LOCATION: europe-west1
+  _KMS_KEYRING: ""
+  _KMS_KEY: build-attestor
+  _KMS_VERSION: "1"
+  _BLOCK_ON_CRITICAL: "false"
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args: [build, --build-arg, "APP_VERSION=${_TAG}", --build-arg, "ERROR_RATE=${_ERROR_RATE}",
+           -t, "${_REPO}/shop:${_TAG}", app]
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_REPO}/shop:${_TAG}"]
+
+  - id: scan
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -eu
+        SCAN=$(gcloud artifacts docker images scan "${_REPO}/shop:${_TAG}" --remote --format='value(response.scan)')
+        gcloud artifacts docker images list-vulnerabilities "$$SCAN" \
+          --format='table(vulnerability.effectiveSeverity,vulnerability.shortDescription,vulnerability.packageIssue[0].affectedPackage)' | head -20
+        CRIT=$(gcloud artifacts docker images list-vulnerabilities "$$SCAN" --format='value(vulnerability.effectiveSeverity)' | grep -c CRITICAL || true)
+        echo "CRITICAL findings: $$CRIT"
+        if [ "${_BLOCK_ON_CRITICAL}" = "true" ] && [ "$$CRIT" -gt 0 ]; then echo "blocked by policy"; exit 1; fi
+
+  - id: attest
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -eu
+        DIGEST=$(gcloud artifacts docker images describe "${_REPO}/shop:${_TAG}" --format='get(image_summary.digest)')
+        gcloud container binauthz attestations sign-and-create \
+          --artifact-url="${_REPO}/shop@$$DIGEST" \
+          --attestor="${_ATTESTOR}" --attestor-project="${PROJECT_ID}" \
+          --keyversion-project="${PROJECT_ID}" --keyversion-location="${_KMS_LOCATION}" \
+          --keyversion-keyring="${_KMS_KEYRING}" --keyversion-key="${_KMS_KEY}" --keyversion="${_KMS_VERSION}"
+        echo "attested ${_REPO}/shop@$$DIGEST"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  requestedVerifyOption: VERIFIED   # SLSA build provenance
