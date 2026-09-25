@@ -1,8 +1,8 @@
 # Live test results
 
-Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T22:32Z
+Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T22:41Z
 
-**22 passed, 4 failed**
+**27 passed, 0 failed**
 
 | | Check |
 |---|---|
@@ -19,10 +19,11 @@ Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T
 | ✅ | server pod ready (team-b) |
 | ✅ | client pod ready (team-a) |
 | ✅ | client pod ready (team-b) |
-| ✅ | team-a -> team-b service is BLOCKED (cross-tenant) |
-| ❌ | team-b -> team-b service is ALLOWED (same namespace) |
-| ❌ | team-a reads its bucket with NO key files (federated token) |
-| ❌ | team-b is DENIED on team-a's bucket (403) |
+| ✅ | DNS works from a locked-down tenant pod (NodeLocal DNSCache allowed) |
+| ✅ | team-a -> team-b service IP is DROPPED by NetworkPolicy (timeout) |
+| ✅ | team-b -> team-b service is ALLOWED (same namespace, by name) |
+| ✅ | team-a reads its bucket with NO key files (federated token) |
+| ✅ | team-b is DENIED on team-a's bucket (403 from Google, no grant) |
 | ✅ | normal request -> 200 |
 | ✅ | SQL injection -> 403 |
 | ✅ | XSS -> 403 |
@@ -31,4 +32,4 @@ Run against project `claude-code-507112` · cluster `platform-eu` · 2026-09-25T
 | ✅ | latest release's prod rollout SUCCEEDED |
 | ✅ | prod serves the released version |
 | ✅ | app RED metrics queryable via PromQL |
-| ❌ | HPA scaled out (2 -> 2 replicas) |
+| ✅ | HPA scaled out (2 -> 8 replicas) |

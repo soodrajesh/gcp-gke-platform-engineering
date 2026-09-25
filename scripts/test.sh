@@ -110,7 +110,8 @@ try:
     print(urllib.request.urlopen(r,timeout=8).read().decode().strip())
 except urllib.error.HTTPError as e: print('HTTP',e.code); sys.exit(4)"
 check "team-a reads its bucket with NO key files (federated token)" kubectl -n team-a exec client-a -- python -c "$READ"
-check "team-b is DENIED on team-a's bucket (403)"                    bash -c "kubectl -n team-b exec client-b -- python -c \"$READ\" 2>&1 | grep -q 'HTTP 403'"
+team_b_denied() { local out; out="$(kubectl -n team-b exec client-b -- python -c "$READ" 2>&1)"; grep -q 'HTTP 403' <<<"$out"; }
+check "team-b is DENIED on team-a's bucket (403 from Google, no grant)"    team_b_denied
 
 section "6. Edge: Cloud Armor WAF on the global external ALB"
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
