@@ -1,0 +1,20 @@
+name: oidc-debug
+# Diagnostic: shows the claims GitHub puts in the OIDC token for a job bound to the `prod`
+# environment, so IAM bindings can be checked against reality. Manual only.
+on: workflow_dispatch
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  claims:
+    environment: prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print OIDC claims (identity metadata only)
+        run: |
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=//iam.googleapis.com/${{ vars.WIF_PROVIDER }}" | jq -r .value)
+          echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+' | awk '{ while (length($0) % 4) $0 = $0 "="; print }' | base64 -d \
+            | jq '{iss, aud, sub, repository, repository_owner, repository_id, repository_owner_id, environment, ref, job_workflow_ref, event_name}'

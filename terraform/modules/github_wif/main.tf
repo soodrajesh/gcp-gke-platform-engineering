@@ -24,8 +24,9 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   display_name                       = "GitHub OIDC"
 
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.repository" = "assertion.repository"
+    "google.subject"        = "assertion.sub"
+    "attribute.repository"  = "assertion.repository"
+    "attribute.environment" = "assertion.environment"
   }
   attribute_condition = "assertion.repository == \"${var.github_repo}\""
 
@@ -38,10 +39,15 @@ resource "google_service_account_iam_member" "plan" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
 }
 
+# Deploy identity: only jobs bound to the protected GitHub environment can assume it.
+# Bound on the *environment attribute*, not a literal `repo:<owner>/<repo>:environment:<env>` subject:
+# GitHub now issues IMMUTABLE subject claims for new repos (`repo:<owner>@<id>/<repo>@<id>:...`), which
+# a name-based subject binding silently never matches. The repository restriction is enforced by the
+# provider's attribute_condition, so the two together are equivalent and format-independent.
 resource "google_service_account_iam_member" "deploy" {
   service_account_id = "projects/${var.project_id}/serviceAccounts/${var.deploy_sa_email}"
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/subject/repo:${var.github_repo}:environment:${var.deploy_environment}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/${var.deploy_environment}"
 }
 
 output "provider" { value = google_iam_workload_identity_pool_provider.github.name }
