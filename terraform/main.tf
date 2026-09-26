@@ -66,7 +66,7 @@ resource "google_artifact_registry_repository_iam_member" "writer" {
 }
 
 resource "google_artifact_registry_repository_iam_member" "reader" {
-  for_each   = toset(["gke-nodes", "plat-deploy-exec"])
+  for_each   = toset(["gke-nodes", "plat-deploy-exec", "plat-ci-deploy"])
   project    = var.project_id
   location   = var.region
   repository = google_artifact_registry_repository.apps.name

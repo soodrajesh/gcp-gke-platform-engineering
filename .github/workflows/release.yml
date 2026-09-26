@@ -30,7 +30,7 @@ jobs:
         run: |
           TAG="v${GITHUB_SHA::8}"
           REPO="$REGION-docker.pkg.dev/$PROJECT/apps"
-          KEYRING=$(gcloud kms keyrings list --location "$REGION" --project "$PROJECT" --filter="name~plat-binauthz" --format='value(name.basename())' | head -1)
+          KEYRING="${{ vars.KMS_KEYRING }}"   # set by scripts/up.sh; the deploy identity has no permission to list key rings
           gcloud builds submit --project "$PROJECT" --region "$REGION" --config cloudbuild.yaml \
             --service-account "projects/$PROJECT/serviceAccounts/plat-build@$PROJECT.iam.gserviceaccount.com" \
             --gcs-source-staging-dir "gs://$PROJECT-gke-build-staging/src" \

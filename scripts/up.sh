@@ -37,7 +37,7 @@ KVER="$(sed -E 's|.*/cryptoKeyVersions/([0-9]+)$|\1|' <<<"$KEYVER")"
 
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   for kv in "WIF_PROVIDER=$(out wif_provider)" "CI_PLAN_SA=$(out ci_plan_sa)" "CI_DEPLOY_SA=$(out ci_deploy_sa)" \
-            "GCP_PROJECT=$PROJECT_ID" "BILLING_ACCOUNT=$BILLING_ACCOUNT_ID" "ALERT_EMAIL=$ALERT_EMAIL"; do
+            "KMS_KEYRING=$KEYRING" "GCP_PROJECT=$PROJECT_ID" "BILLING_ACCOUNT=$BILLING_ACCOUNT_ID" "ALERT_EMAIL=$ALERT_EMAIL"; do
     gh variable set "${kv%%=*}" -R "$GITHUB_REPO" -b "${kv#*=}" >/dev/null 2>&1 || true
   done
   gh api -X PUT "repos/$GITHUB_REPO/environments/prod" --silent >/dev/null 2>&1 || true

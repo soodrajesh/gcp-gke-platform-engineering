@@ -36,6 +36,13 @@ GKE puts **NodeLocal DNSCache (`169.254.20.10`)** in every pod's `resolv.conf`. 
 
 **Lesson (test design):** the first version of the cross-tenant check passed for the wrong reason — DNS was failing for *everyone*, so "blocked" was trivially true. It now proves isolation on the **IP path** and requires a *timeout* (a policy drop), with DNS covered by its own check.
 
+<a id="l9"></a>
+### L9 · CI deploy job: `Permission 'iam.serviceAccounts.getAccessToken' denied` (keyless auth)
+`google-github-actions/auth` succeeded (the STS token exchange works) but impersonating the deploy service account was refused. **Cause:** GitHub now issues **immutable OIDC subject claims** for new repositories, e.g. `repo:soodrajesh@130255849/gcp-gke-platform-engineering@1388166008:environment:prod` (numeric owner + repo IDs). The IAM binding used the old name-based subject (`repo:soodrajesh/<repo>:environment:prod`), which can never match. The `repository` claim is unchanged, which is why the provider's `attribute_condition` still passed and made this look like an IAM propagation problem.
+**Fix:** bind on an attribute, not a literal subject: map `attribute.environment = assertion.environment` and grant `roles/iam.workloadIdentityUser` to `principalSet://…/attribute.environment/prod`; the repository restriction stays in the provider condition.
+**Diagnose:** run the manual `oidc-debug` workflow (prints the real claims of a job in the `prod` environment) and compare with `gcloud iam service-accounts get-iam-policy <sa>`; `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` shows whether immutable subjects are on.
+**Then two ordinary permission gaps appeared** (found only because the run now got further): the deploy identity could not `cloudkms.keyRings.list` (it should never need to: the key ring name is now a repo variable set by `up.sh`) and could not read Artifact Registry (added at repo level).
+
 ## Found in development
 ### D1 · Argo CD's Redis would have been blocked by Binary Authorization
 `helm template` showed the chart pulls Redis from `ecr-public.aws.com/docker/library/redis`, not `public.ecr.aws`. The allow-list only had the latter, so Argo CD's Redis pod would be denied and the whole GitOps layer never start. **Fix:** add `ecr-public.aws.com/docker/library/*`. **Lesson:** derive allow-lists from `helm template | grep image:`, never from memory.
