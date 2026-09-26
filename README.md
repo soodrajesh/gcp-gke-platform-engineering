@@ -42,7 +42,7 @@ The Cloud Console views (GKE, Cloud Deploy, Monitoring) are not included: the co
 | **GitOps for the platform** | **Argo CD** app-of-apps, self-heal + prune, scoped `AppProject` | drift heal in runbook 03 |
 | **Observability** | Managed Prometheus → Cloud Monitoring PromQL alerts, dashboard, uptime check | live test §8 (app metrics queryable via PromQL) |
 | **FinOps** | GKE cost allocation (spend by namespace/label); `team` label enforced by policy; budget alerts; quotas | runbook 08 |
-| **Keyless CI/CD** | GitHub OIDC → WIF; separate read-only plan vs gated deploy identities | ADR / CI |
+| **Keyless CI/CD** | GitHub OIDC → WIF; separate read-only plan vs gated deploy identities | Keyless auth + service-account impersonation proven live (after fixing GitHub's immutable OIDC subjects, [L9](docs/runbooks/09-troubleshooting.md#l9)). The full `release` job was **not** run end to end against a live stack |
 
 ## Architecture
 
