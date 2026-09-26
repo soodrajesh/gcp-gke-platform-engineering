@@ -46,37 +46,9 @@ The Cloud Console views (GKE, Cloud Deploy, Monitoring) are not included: the co
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    dev([Developer]) -->|PR| gh[(GitHub)]
-    gh -->|"OIDC → WIF"| ci["CI: lint · test · kubeconform<br/>kind policy tests · plan"]
-    subgraph supply["Secure supply chain"]
-      cb["Cloud Build<br/>build → scan"] -->|push| ar[("Artifact Registry")]
-      cb -->|"sign digest"| kms[/"Cloud KMS"/] --> att["Binary Authorization"]
-    end
-    subgraph gcp["GCP · europe-west1"]
-      armor["Cloud Armor"] --> lb["Global ALB · Gateway API"]
-      subgraph gke["GKE Autopilot · private nodes · Workload Identity · Dataplane V2"]
-        argo["Argo CD<br/>platform layer"]
-        vap["Admission policy (CEL)"]
-        subgraph tenants["Tenant namespaces"]
-          staging["shop-staging · HPA"]
-          prod["shop-prod · canary"]
-          ab["team-a · team-b"]
-        end
-        gmp["Managed Prometheus"]
-      end
-      cd["Cloud Deploy<br/>staging → approve → canary"]
-      mon["Cloud Monitoring<br/>PromQL alerts · dashboard"]
-    end
-    user([User]) --> armor
-    lb --> prod & staging
-    ci -.-> cd
-    cb -.->|"signed digest"| cd -->|deploy| gke
-    att -->|"signed only"| gke
-    gh -->|sync| argo
-    gmp --> mon
-```
+[![Architecture](docs/img/architecture.png)](docs/img/architecture.svg)
+
+<sub>Click for the vector version. Numbered steps trace the request path, lettered steps trace delivery; the legend under the diagram explains each one. Diagram source: [`docs/diagrams/architecture.py`](docs/diagrams/architecture.py).</sub>
 Every pod passes **three independent admission gates**: Pod Security (how it runs) → ValidatingAdmissionPolicy (org rules) → Binary Authorization (what it is). Details: [architecture](docs/architecture.md).
 
 ## Design decisions
