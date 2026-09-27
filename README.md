@@ -10,25 +10,6 @@ gcloud config set project <your-project>      # billing linked; the rest is auto
 ./scripts/down.sh     # delete everything (--purge also drops the state bucket)
 ```
 
-## Evidence (captured from the live deployment)
-
-| | |
-|---|---|
-| ![live test suite](docs/img/live-test-suite.png) | ![admission denials](docs/img/live-admission-denials.png) |
-| **`scripts/test.sh`** — every control proven on the running cluster | **Admission control** — Binary Authorization denies unsigned/tag-referenced images; policies deny `:latest` and public Services; the signed build is admitted |
-
-| | |
-|---|---|
-| ![Argo CD](docs/img/argocd-applications.png) | ![delivery](docs/img/live-delivery.png) |
-| **Argo CD** — all six platform apps Synced and Healthy | **Delivery** — Cloud Deploy releases and rollouts, the KMS-backed attestation, Argo apps |
-
-| | |
-|---|---|
-| ![WAF](docs/img/live-waf-edge.png) | ![canary drill](docs/img/live-canary-drill.png) |
-| **Edge** — Cloud Armor rules; SQLi/XSS → 403, normal → 200 | **Bad-release drill** — canary exposure tracks pod share; rollback restores 0 % errors |
-
-The Cloud Console views (GKE, Cloud Deploy, Monitoring) are not included: the console needs an interactive Google sign-in that automation cannot perform.
-
 ## Why this is a platform, not a cluster
 
 | Concern | Mechanism | Proven by |
